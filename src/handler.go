@@ -4,9 +4,13 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+
+	"github.com/segmentio/kafka-go"
 )
 
-type Handler struct{}
+type Handler struct {
+	kafka *kafka.Writer
+}
 
 type Event struct {
 	UserID    string `json:"userId"`
@@ -14,8 +18,10 @@ type Event struct {
 	URL       string `json:"url"`
 }
 
-func NewHandler() *Handler {
-	return &Handler{}
+func NewHandler(kafka *kafka.Writer) *Handler {
+	return &Handler{
+		kafka: kafka,
+	}
 }
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
@@ -31,6 +37,18 @@ func (h *Handler) handlerCreateEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	val, err := json.Marshal(event)
+	if err != nil {
+		log.Printf("unable to marshal json event: %v", err.Error())
+	}
+
+	if err := h.kafka.WriteMessages(r.Context(), kafka.Message{
+		Topic: "events",
+		Key:   []byte(event.UserID),
+		Value: val,
+	}); err != nil {
+		log.Printf("faliled to write message: %v", err)
+	}
 	w.WriteHeader(http.StatusAccepted)
 	log.Printf("Event: %+v", event)
 }
