@@ -1,8 +1,9 @@
 package main
 
 import (
+	events "analytics/src"
 	"fmt"
-	events "learn-go-with-tests/gothings/analytics-tag/src"
+
 	"log"
 	"net/http"
 
