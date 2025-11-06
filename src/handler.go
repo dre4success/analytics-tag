@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/segmentio/kafka-go"
 )
@@ -40,14 +41,17 @@ func (h *Handler) handlerCreateEvent(w http.ResponseWriter, r *http.Request) {
 	val, err := json.Marshal(event)
 	if err != nil {
 		log.Printf("unable to marshal json event: %v", err.Error())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
 	}
 
 	if err := h.kafka.WriteMessages(r.Context(), kafka.Message{
 		Topic: "events",
 		Key:   []byte(event.UserID),
 		Value: val,
+		Time: time.Now(),
 	}); err != nil {
-		log.Printf("faliled to write message: %v", err)
+		log.Printf("failed to write message: %v", err)
 	}
 	w.WriteHeader(http.StatusAccepted)
 	log.Printf("Event: %+v", event)
