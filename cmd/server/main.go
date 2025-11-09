@@ -2,11 +2,14 @@ package main
 
 import (
 	events "analytics/src"
+	"context"
 	"fmt"
 
 	"log"
 	"net/http"
 
+	"github.com/redis/go-redis/v9"
+	"github.com/redis/go-redis/v9/maintnotifications"
 	"github.com/segmentio/kafka-go"
 )
 
@@ -25,9 +28,21 @@ func main() {
 	}
 
 	defer kw.Close()
+
+	cache := redis.NewClient(&redis.Options{
+		Addr: "localhost:6379",
+		MaintNotificationsConfig: &maintnotifications.Config{
+			Mode: maintnotifications.ModeDisabled,
+		},
+	})
+
+	if _, err := cache.Ping(context.Background()).Result(); err != nil {
+		log.Fatalf("Could not connect to Redis: %v", err)
+	}
+
 	mux := http.NewServeMux()
 
-	events := events.NewHandler(kw)
+	events := events.NewHandler(kw, cache)
 	events.RegisterRoutes(mux)
 
 	port := "7070"
